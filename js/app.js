@@ -74,24 +74,52 @@ function stormSummaryHtml() {
 function setStatus() {
   const statusBox = document.getElementById("statusBox");
   const wasCollapsed = statusBox.classList.contains("collapsed");
+  const activeStormCount = activeStorms.length;
+  const totalConeImpact = contractsInConeCount + subsInConeCount;
+  const updateText = lastNHCUpdate === "Not checked yet" ? "Checking live feeds…" : lastNHCUpdate;
+  const riskClass = totalConeImpact >= 20 ? "metric-danger" : totalConeImpact > 0 ? "metric-warning" : "metric-normal";
+
   statusBox.innerHTML =
     `<div class="status-title">
-       <div class="status-heading"><span aria-hidden="true">📊</span><b>Live Operations Summary</b><span class="status-live-dot" title="Live data">●</span></div>
+       <div class="status-heading"><span aria-hidden="true">◉</span><b>Executive Dashboard</b><span class="status-live-dot" title="Live data">●</span></div>
        <button class="status-toggle" type="button" onclick="toggleStatusSummary()" aria-expanded="${!wasCollapsed}">${wasCollapsed ? "Show" : "Hide"}</button>
      </div>
-     <div class="status-body">
-       <div class="status-grid">
+     <div class="status-body executive-status-body">
+       <div class="executive-metrics">
+         <button class="executive-metric metric-storm" onclick="zoomToStorm()" type="button">
+           <span class="metric-icon">🌀</span>
+           <span class="metric-value">${activeStormCount}</span>
+           <span class="metric-label">Active Storms</span>
+         </button>
+         <button class="executive-metric ${riskClass}" onclick="showConeContracts()" type="button">
+           <span class="metric-icon">📍</span>
+           <span class="metric-value">${contractsInConeCount}</span>
+           <span class="metric-label">Contracts at Risk</span>
+         </button>
+         <button class="executive-metric metric-sub" onclick="showConeSubs()" type="button">
+           <span class="metric-icon">🚚</span>
+           <span class="metric-value">${subsInConeCount}</span>
+           <span class="metric-label">Subs in Cone</span>
+         </button>
+         <button class="executive-metric metric-alert" type="button">
+           <span class="metric-icon">⚠️</span>
+           <span class="metric-value">${lastAlertsCount}</span>
+           <span class="metric-label">NOAA Alerts</span>
+         </button>
+       </div>
+       <div class="executive-feed-status">
+         <div><span class="feed-dot"></span><b>Live feeds connected</b></div>
+         <span>${escapeHtml(updateText)}</span>
+       </div>
+       <div class="executive-secondary-grid">
          <span>Contracts loaded</span><b>${lastContractsCount}</b>
          <span>Subcontractors loaded</span><b>${lastSubsCount}</b>
-         <span>Contracts inside cone</span><b>${contractsInConeCount}</b>
-         <span>Subs inside cone</span><b>${subsInConeCount}</b>
-         <span>NOAA alert polygons</span><b>${lastAlertsCount}</b>
          <span>NHC cones</span><b>${lastNHCConesCount}</b>
-         <span>NHC track features</span><b>${lastNHCTracksCount}</b>
-         <span>Near selected forecast point</span><b>${forecastProximityContracts} contracts / ${forecastProximitySubs} subs</b>
+         <span>Forecast features</span><b>${lastNHCTracksCount}</b>
+         <span>Near selected point</span><b>${forecastProximityContracts} / ${forecastProximitySubs}</b>
        </div>
-       ${stormSummaryHtml()}
-       <small class="nhc-note">NHC checked: ${escapeHtml(lastNHCUpdate)}${lastNHCMessage ? `<br>${escapeHtml(lastNHCMessage)}` : ""}</small>
+       <div class="executive-storm-list">${stormSummaryHtml()}</div>
+       ${lastNHCMessage ? `<small class="nhc-note">${escapeHtml(lastNHCMessage)}</small>` : ""}
      </div>`;
   syncMobileSummary();
   requestAnimationFrame(positionMobileZoomBelowSummary);
