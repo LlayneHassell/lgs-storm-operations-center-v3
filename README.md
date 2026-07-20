@@ -12,3 +12,7 @@ This release builds on the working Executive Dashboard and adds a live Storm Int
 - Cache-busting stylesheet and script version 3.0
 
 Upload the contents of this folder to the existing `lgs-storm-operations-center-v3` repository and replace the current files.
+
+
+## Sprint 4: Intelligent Deployment Planner
+Adds ranked staging-location recommendations using the selected NHC forecast point, cone position, nearby mapped subcontractors/contracts, and major-road access. Includes 50/100/150/200-mile resource radii, state filtering, map markers, and planning safeguards.

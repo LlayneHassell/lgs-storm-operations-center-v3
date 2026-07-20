@@ -23,6 +23,7 @@ const subsLayer = L.layerGroup().addTo(map);
 const nhcConeLayer = L.layerGroup().addTo(map);
 const nhcTrackLayer = L.layerGroup().addTo(map);
 const nhcPointsLayer = L.layerGroup().addTo(map);
+const deploymentPlannerLayer = L.layerGroup().addTo(map);
 
 const layerControl = L.control.layers({}, {
   "Contracts": contractsLayer,
@@ -30,7 +31,8 @@ const layerControl = L.control.layers({}, {
   "NOAA Weather Alerts": alertsLayer,
   "NHC Forecast Cones": nhcConeLayer,
   "NHC Forecast Tracks": nhcTrackLayer,
-  "NHC Forecast Points": nhcPointsLayer
+  "NHC Forecast Points": nhcPointsLayer,
+  "Recommended Staging": deploymentPlannerLayer
 }, { collapsed: false }).addTo(map);
 
 let contractMarkers = [];
@@ -1104,6 +1106,163 @@ function openStormPanel() {
     </section>
     <div class="timing-note"><b>Planning note:</b> Forecast points and the cone are planning guidance, not guaranteed impact locations or landfall times. Conditions can change with every advisory.</div>`;
   setStormPanelOpen(true);
+}
+
+
+/*** SPRINT 4 — INTELLIGENT DEPLOYMENT PLANNER ***/
+const STAGING_LOCATIONS = [
+  {city:"Alexandria",state:"LA",lat:31.3113,lon:-92.4451,access:"I-49 / US-71"},
+  {city:"Baton Rouge",state:"LA",lat:30.4515,lon:-91.1871,access:"I-10 / I-12"},
+  {city:"Lafayette",state:"LA",lat:30.2241,lon:-92.0198,access:"I-10 / I-49"},
+  {city:"Lake Charles",state:"LA",lat:30.2266,lon:-93.2174,access:"I-10 / US-171"},
+  {city:"Monroe",state:"LA",lat:32.5093,lon:-92.1193,access:"I-20 / US-165"},
+  {city:"Shreveport",state:"LA",lat:32.5252,lon:-93.7502,access:"I-20 / I-49"},
+  {city:"Jackson",state:"MS",lat:32.2988,lon:-90.1848,access:"I-20 / I-55"},
+  {city:"Hattiesburg",state:"MS",lat:31.3271,lon:-89.2903,access:"I-59 / US-49"},
+  {city:"Gulfport",state:"MS",lat:30.3674,lon:-89.0928,access:"I-10 / US-49"},
+  {city:"Meridian",state:"MS",lat:32.3643,lon:-88.7037,access:"I-20 / I-59"},
+  {city:"Mobile",state:"AL",lat:30.6954,lon:-88.0399,access:"I-10 / I-65"},
+  {city:"Montgomery",state:"AL",lat:32.3668,lon:-86.3000,access:"I-65 / I-85"},
+  {city:"Birmingham",state:"AL",lat:33.5186,lon:-86.8104,access:"I-20 / I-65"},
+  {city:"Pensacola",state:"FL",lat:30.4213,lon:-87.2169,access:"I-10 / I-110"},
+  {city:"Tallahassee",state:"FL",lat:30.4383,lon:-84.2807,access:"I-10 / US-27"},
+  {city:"Panama City",state:"FL",lat:30.1588,lon:-85.6602,access:"US-98 / US-231"},
+  {city:"Jacksonville",state:"FL",lat:30.3322,lon:-81.6557,access:"I-10 / I-95"},
+  {city:"Orlando",state:"FL",lat:28.5383,lon:-81.3792,access:"I-4 / Florida Turnpike"},
+  {city:"Tampa",state:"FL",lat:27.9506,lon:-82.4572,access:"I-4 / I-75"},
+  {city:"Savannah",state:"GA",lat:32.0809,lon:-81.0912,access:"I-16 / I-95"},
+  {city:"Macon",state:"GA",lat:32.8407,lon:-83.6324,access:"I-16 / I-75"},
+  {city:"Albany",state:"GA",lat:31.5785,lon:-84.1557,access:"US-19 / US-82"},
+  {city:"Columbus",state:"GA",lat:32.4610,lon:-84.9877,access:"I-185 / US-80"},
+  {city:"Houston",state:"TX",lat:29.7604,lon:-95.3698,access:"I-10 / I-45"},
+  {city:"Beaumont",state:"TX",lat:30.0802,lon:-94.1266,access:"I-10 / US-69"},
+  {city:"Lufkin",state:"TX",lat:31.3382,lon:-94.7291,access:"US-59 / US-69"},
+  {city:"Tyler",state:"TX",lat:32.3513,lon:-95.3011,access:"I-20 / US-69"},
+  {city:"Little Rock",state:"AR",lat:34.7465,lon:-92.2896,access:"I-30 / I-40"},
+  {city:"Memphis",state:"TN",lat:35.1495,lon:-90.0490,access:"I-40 / I-55"},
+  {city:"Columbia",state:"SC",lat:34.0007,lon:-81.0348,access:"I-20 / I-26"},
+  {city:"Charleston",state:"SC",lat:32.7765,lon:-79.9311,access:"I-26 / US-17"},
+  {city:"Charlotte",state:"NC",lat:35.2271,lon:-80.8431,access:"I-77 / I-85"}
+];
+
+function plannerForecastPoint() {
+  const step = activeForecastStep();
+  if (step && Array.isArray(step.coordinates)) return step.coordinates;
+  const storm = activeStorms[0];
+  const point = storm?.forecasts?.find(p => Array.isArray(p.coordinates));
+  return point?.coordinates || null;
+}
+
+function countNear(markers, coords, radius) {
+  return markers.filter(item => distanceMiles([item.lon,item.lat], coords) <= radius).length;
+}
+
+function stagingScore(location, target, radius) {
+  const coords = [location.lon, location.lat];
+  const distance = target ? distanceMiles(coords, target) : null;
+  const insideCone = pointInsidePolygons(location.lon, location.lat, activeConePolygons);
+  const nearbySubs = countNear(subMarkers, coords, radius);
+  const nearbyContracts = countNear(contractMarkers, coords, radius);
+  let score = 0;
+  if (!insideCone) score += 30;
+  if (distance !== null) {
+    if (distance >= 40 && distance <= 120) score += 30;
+    else if (distance > 120 && distance <= 200) score += 20;
+    else if (distance < 40) score += 8;
+    else if (distance <= 300) score += 10;
+  }
+  score += Math.min(25, nearbySubs * 3);
+  score += Math.min(10, nearbyContracts * 2);
+  score += location.access.includes('I-') ? 5 : 2;
+  return {...location, distance, insideCone, nearbySubs, nearbyContracts, score:Math.min(100,Math.round(score))};
+}
+
+function plannerRisk(item) {
+  if (item.insideCone) return {label:'HIGH', cls:'planner-risk-high'};
+  if (item.distance !== null && item.distance < 40) return {label:'ELEVATED', cls:'planner-risk-elevated'};
+  if (item.distance !== null && item.distance <= 150) return {label:'MODERATE', cls:'planner-risk-moderate'};
+  return {label:'LOW', cls:'planner-risk-low'};
+}
+
+function plannerStars(score) {
+  const n = Math.max(1, Math.min(5, Math.round(score / 20)));
+  return '★'.repeat(n) + '☆'.repeat(5-n);
+}
+
+function deploymentRecommendations(radius=100, state='ALL') {
+  const target = plannerForecastPoint();
+  return STAGING_LOCATIONS
+    .filter(x => state === 'ALL' || x.state === state)
+    .map(x => stagingScore(x,target,radius))
+    .sort((a,b) => b.score-a.score || (a.distance??9999)-(b.distance??9999));
+}
+
+function renderDeploymentMarkers(items) {
+  deploymentPlannerLayer.clearLayers();
+  items.slice(0,5).forEach((item,index) => {
+    const marker = L.circleMarker([item.lat,item.lon], {
+      radius:index===0?10:8, color:'#ffffff', weight:2, fillColor:index===0?'#35d07f':'#21b6e8', fillOpacity:.95
+    }).bindPopup(`<b>#${index+1} ${escapeHtml(item.city)}, ${escapeHtml(item.state)}</b><br>Planner score: ${item.score}/100<br>${item.distance===null?'Forecast point unavailable':`${Math.round(item.distance)} straight-line miles from selected forecast point`}<br>${item.nearbySubs} subs and ${item.nearbyContracts} contracts within selected radius.`);
+    marker.addTo(deploymentPlannerLayer);
+  });
+}
+
+function focusStagingLocation(index) {
+  const item = (window.currentDeploymentRecommendations || [])[index];
+  if (!item) return;
+  map.setView([item.lat,item.lon],7);
+  deploymentPlannerLayer.eachLayer(layer => {
+    const ll=layer.getLatLng?.();
+    if (ll && Math.abs(ll.lat-item.lat)<.001 && Math.abs(ll.lng-item.lon)<.001) layer.openPopup();
+  });
+}
+
+function updateDeploymentPlanner() {
+  const radius = Number(document.getElementById('deploymentRadius')?.value || 100);
+  const state = document.getElementById('deploymentState')?.value || 'ALL';
+  const recommendations = deploymentRecommendations(radius,state);
+  window.currentDeploymentRecommendations = recommendations;
+  renderDeploymentMarkers(recommendations);
+  const target = plannerForecastPoint();
+  const body = document.getElementById('deploymentResults');
+  if (!body) return;
+  body.innerHTML = recommendations.length ? recommendations.slice(0,8).map((item,index) => {
+    const risk=plannerRisk(item);
+    return `<article class="planner-card ${index===0?'planner-top':''}" onclick="focusStagingLocation(${index})">
+      <div class="planner-rank">#${index+1}</div>
+      <div class="planner-card-main">
+        <div class="planner-card-heading"><div><span class="planner-stars">${plannerStars(item.score)}</span><h3>${escapeHtml(item.city)}, ${escapeHtml(item.state)}</h3></div><strong>${item.score}<small>/100</small></strong></div>
+        <div class="planner-facts">
+          <span><b>${item.distance===null?'—':Math.round(item.distance)}</b> mi to selected forecast point</span>
+          <span><b>${item.insideCone?'Inside':'Outside'}</b> forecast cone</span>
+          <span><b>${item.nearbySubs}</b> nearby subs</span>
+          <span><b>${item.nearbyContracts}</b> nearby contracts</span>
+        </div>
+        <div class="planner-footer"><span>${escapeHtml(item.access)}</span><em class="${risk.cls}">${risk.label} RISK</em></div>
+      </div>
+    </article>`;
+  }).join('') : `<div class="intel-empty"><h3>No staging locations match this filter</h3><p>Choose All States or a different state.</p></div>`;
+  const context = document.getElementById('deploymentContext');
+  if (context) context.innerHTML = target ? `Recommendations use the <b>${escapeHtml(activeForecastStep()?.label || 'selected')}</b> forecast point and a <b>${radius}-mile</b> resource radius.` : `No forecast point is currently available. Rankings emphasize mapped resources, cone position, and highway access.`;
+}
+
+function openDeploymentPlanner() {
+  document.getElementById('stormPanel').classList.remove('results-mode');
+  const states=[...new Set(STAGING_LOCATIONS.map(x=>x.state))].sort();
+  document.getElementById('stormPanelBody').innerHTML = `
+    <div class="intel-briefing-header">
+      <div><span class="intel-kicker">DECISION SUPPORT</span><h1>Deployment Planner</h1></div>
+      <div class="intel-update">Live inputs<br><b>NHC + LGS map data</b></div>
+    </div>
+    <section class="planner-controls">
+      <label>Resource search radius<select id="deploymentRadius" onchange="updateDeploymentPlanner()"><option value="50">50 miles</option><option value="100" selected>100 miles</option><option value="150">150 miles</option><option value="200">200 miles</option></select></label>
+      <label>Preferred state<select id="deploymentState" onchange="updateDeploymentPlanner()"><option value="ALL">All states</option>${states.map(x=>`<option value="${x}">${x}</option>`).join('')}</select></label>
+    </section>
+    <div class="planner-context" id="deploymentContext"></div>
+    <section id="deploymentResults"></section>
+    <div class="timing-note"><b>Planning safeguard:</b> Rankings are screening recommendations—not dispatch orders. Distances are straight-line estimates. Confirm road conditions, lodging, fuel, site permission, local hazards, and the latest official forecast before mobilization.</div>`;
+  setStormPanelOpen(true);
+  updateDeploymentPlanner();
 }
 
 function setStormPanelOpen(open) {

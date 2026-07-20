@@ -16,7 +16,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
-<meta content="LGS Storm Operations Center v3" name="application-name"/><link href="css/dashboard.css?v=3.0" rel="stylesheet"/></head>
+<meta content="LGS Storm Operations Center v3" name="application-name"/><link href="css/dashboard.css?v=4.0" rel="stylesheet"/></head>
 <body>
 <div id="map"></div>
 <div class="app-header">
@@ -38,6 +38,7 @@
 <button class="quick-btn" onclick="showConeSubs()"><span>🚚</span> Available Subs</button>
 <button class="quick-btn" onclick="resetMapView()"><span>↺</span> Reset Map</button>
 <button class="quick-btn" onclick="openStormPanel()"><span>◫</span> Situation Report</button>
+<button class="quick-btn quick-deploy" onclick="openDeploymentPlanner()"><span>🚛</span> Deployment Planner</button>
 <button class="quick-btn quick-accent" onclick="generateStormBrief()"><span>📄</span> Generate Brief</button>
 </div>
 <button aria-expanded="false" class="mobile-panels-button" id="mobilePanelsButton" onclick="toggleMobilePanels()">☰ Panels</button>
@@ -55,6 +56,7 @@
 <button onclick="toggleMobilePanelSection('mobileStormSection')">🌀 Storm &amp; Results <span class="panel-chevron">⌄</span></button>
 <div class="mobile-panel-content mobile-panel-actions">
 <button onclick="openFromMobilePanels(openStormPanel)">Storm Details</button>
+<button onclick="openFromMobilePanels(openDeploymentPlanner)">Deployment Planner</button>
 <button onclick="openFromMobilePanels(showConeContracts)">Contracts in Cone</button>
 <button onclick="openFromMobilePanels(showConeSubs)">Subcontractors in Cone</button>
 <button onclick="openFromMobilePanels(generateStormBrief)">Generate Storm Brief</button>
@@ -115,5 +117,5 @@
 <div class="side-panel-body" id="stormPanelBody"></div>
 </div>
 
-<script defer="defer" src="js/app.js?v=3.0"></script></body>
+<script defer="defer" src="js/app.js?v=4.0"></script></body>
 </html>
