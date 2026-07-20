@@ -500,10 +500,21 @@ function uniqueStormsFromFeatures(features) {
   for (const feature of features || []) {
     const props = feature.properties || {};
     const name = nhcFeatureTitle(props);
-    const current = byName.get(name) || { name, type: "", advisory: "", wind: "", validTime: "", forecasts: [] };
+    const current = byName.get(name) || {
+      name, type: "", advisory: "", wind: "", validTime: "", forecasts: [],
+      pressure: "", movement: "", latitude: "", longitude: ""
+    };
     current.type = current.type || props.stormtype || props.STORMTYPE || props.tcclass || props.TCCLASS || "";
     current.advisory = current.advisory || props.advnum || props.ADVNUM || props.advisory || "";
     current.wind = current.wind || props.maxwind || props.MAXWIND || props.windspd || props.WINDSPD || "";
+    current.pressure = current.pressure || props.mslp || props.MSLP || props.pressure || props.PRESSURE || props.minpress || props.MINPRESS || "";
+    const direction = props.movement || props.MOVEMENT || props.motion || props.MOTION || props.stormdir || props.STORMDIR || props.direction || props.DIRECTION || "";
+    const speed = props.stormspeed || props.STORMSPEED || props.speed || props.SPEED || props.movspeed || props.MOVSPEED || "";
+    current.movement = current.movement || ([direction, speed !== "" ? `${speed} kt` : ""].filter(Boolean).join(" @ "));
+    if (feature.geometry?.type === "Point" && Array.isArray(feature.geometry.coordinates)) {
+      current.longitude = current.longitude || feature.geometry.coordinates[0];
+      current.latitude = current.latitude || feature.geometry.coordinates[1];
+    }
     const rawLabel = forecastLabelFromProps(props);
     current.validTime = current.validTime || formatForecastLabel(rawLabel);
     if (rawLabel) {
@@ -1014,28 +1025,84 @@ function focusSearchResult(index) {
 
 document.getElementById("mapSearch").addEventListener("keydown", e => { if (e.key === "Enter") runMapSearch(); });
 
+function operationalStatesForMarkers(markers) {
+  const states = [...new Set(markersInCone(markers).map(item => String(item.state || "").trim()).filter(Boolean))];
+  return states.sort();
+}
+
+function stormImpactScore() {
+  const contractWeight = Math.min(40, contractsInConeCount * 4);
+  const subWeight = Math.min(20, subsInConeCount * 2);
+  const alertWeight = Math.min(25, lastAlertsCount * 2);
+  const stormWeight = activeStorms.length ? 15 : 0;
+  return Math.min(100, contractWeight + subWeight + alertWeight + stormWeight);
+}
+
+function impactLevel(score) {
+  if (score >= 80) return "SEVERE";
+  if (score >= 60) return "HIGH";
+  if (score >= 35) return "ELEVATED";
+  if (score > 0) return "GUARDED";
+  return "LOW";
+}
+
+function intelligenceValue(value, fallback = "Not published") {
+  return value === undefined || value === null || value === "" ? fallback : escapeHtml(value);
+}
+
 function openStormPanel() {
   document.getElementById("stormPanel").classList.remove("results-mode");
-  const stormsHtml = activeStorms.length ? activeStorms.map(storm => `
-    <div class="storm-detail">
-      <h3>${escapeHtml(storm.name)}</h3>
-      ${storm.type ? `<div><b>Classification:</b> ${escapeHtml(storm.type)}</div>` : ""}
-      ${storm.advisory ? `<div><b>Advisory:</b> ${escapeHtml(storm.advisory)}</div>` : ""}
-      ${storm.wind ? `<div><b>Maximum wind:</b> ${escapeHtml(storm.wind)} kt</div>` : ""}
-      ${storm.validTime ? `<div><b>Latest forecast point:</b> ${escapeHtml(storm.validTime)}</div>` : ""}
-      ${storm.forecasts?.length ? `<div><b>Projected timing:</b></div><ul class="forecast-timeline">${storm.forecasts.slice(0,10).map(point => `<li>${point.hour !== null ? `<b>+${point.hour} hr:</b> ` : ""}${escapeHtml(point.label)}${point.wind ? ` — ${escapeHtml(point.wind)} kt` : ""}</li>`).join("")}</ul>` : ""}
-      <div class="timing-note"><b>Important:</b> These are NHC forecast-point dates along the projected track. They are not a guaranteed landfall time; timing and location may change with each advisory.</div>
-    </div>`).join("") : `<p>No active NHC tropical forecast is currently published.</p>`;
-  const contractNames = markersInCone(contractMarkers).slice(0,50).map(x=>`<li>${escapeHtml(x.name || "Contract")}${x.state ? ` — ${escapeHtml(x.state)}` : ""}</li>`).join("");
-  const subNames = markersInCone(subMarkers).slice(0,50).map(x=>`<li>${escapeHtml(x.name || "Subcontractor")}${x.state ? ` — ${escapeHtml(x.state)}` : ""}</li>`).join("");
+  const score = stormImpactScore();
+  const level = impactLevel(score);
+  const contractStates = operationalStatesForMarkers(contractMarkers);
+  const subStates = operationalStatesForMarkers(subMarkers);
+  const threatenedStates = [...new Set([...contractStates, ...subStates])];
+
+  const stormsHtml = activeStorms.length ? activeStorms.map((storm, index) => `
+    <section class="intel-storm-card">
+      <div class="intel-storm-heading">
+        <div><span class="intel-kicker">ACTIVE SYSTEM ${activeStorms.length > 1 ? index + 1 : ""}</span><h2>${escapeHtml(storm.name)}</h2></div>
+        <span class="intel-classification">${intelligenceValue(storm.type, "Tropical system")}</span>
+      </div>
+      <div class="intel-grid">
+        <div class="intel-stat"><span>Maximum Wind</span><strong>${intelligenceValue(storm.wind)}${storm.wind ? " kt" : ""}</strong></div>
+        <div class="intel-stat"><span>Pressure</span><strong>${intelligenceValue(storm.pressure)}${storm.pressure ? " mb" : ""}</strong></div>
+        <div class="intel-stat"><span>Movement</span><strong>${intelligenceValue(storm.movement)}</strong></div>
+        <div class="intel-stat"><span>Advisory</span><strong>${storm.advisory ? `#${escapeHtml(storm.advisory)}` : "Not published"}</strong></div>
+        <div class="intel-stat intel-wide"><span>Latest Forecast Time</span><strong>${intelligenceValue(storm.validTime)}</strong></div>
+      </div>
+      ${storm.forecasts?.length ? `<div class="intel-timeline"><div class="intel-section-title">Forecast Timing</div>${storm.forecasts.slice(0,8).map(point => `<div class="intel-timeline-row"><b>${point.hour !== null ? `+${point.hour} hr` : "Current"}</b><span>${escapeHtml(point.label)}${point.wind ? ` • ${escapeHtml(point.wind)} kt` : ""}</span></div>`).join("")}</div>` : ""}
+    </section>`).join("") : `<div class="intel-empty"><h3>No active NHC tropical forecast</h3><p>The panel will populate automatically when NHC publishes an active system.</p></div>`;
+
+  const contractNames = markersInCone(contractMarkers).slice(0,25).map(x=>`<li>${escapeHtml(x.name || "Contract")}${x.state ? ` <span>${escapeHtml(x.state)}</span>` : ""}</li>`).join("");
+  const subNames = markersInCone(subMarkers).slice(0,25).map(x=>`<li>${escapeHtml(x.name || "Subcontractor")}${x.state ? ` <span>${escapeHtml(x.state)}</span>` : ""}</li>`).join("");
+
   document.getElementById("stormPanelBody").innerHTML = `
+    <div class="intel-briefing-header">
+      <div><span class="intel-kicker">LIVE BRIEFING</span><h1>Storm Intelligence</h1></div>
+      <div class="intel-update">NHC checked<br><b>${escapeHtml(lastNHCUpdate)}</b></div>
+    </div>
     ${stormsHtml}
-    <h3>Operational Impact</h3>
-    <div><b>Contracts in cone:</b> ${contractsInConeCount}</div>
-    <div><b>Subcontractors in cone:</b> ${subsInConeCount}</div>
-    ${contractNames ? `<h4>Contracts</h4><ul>${contractNames}</ul>` : ""}
-    ${subNames ? `<h4>Subcontractors</h4><ul>${subNames}</ul>` : ""}
-    <small>Lists are limited to the first 50 results in each category.</small>`;
+    <section class="intel-impact-card">
+      <div class="intel-impact-score"><span>Operational Impact</span><strong>${score}</strong><small>/100</small><em class="impact-${level.toLowerCase()}">${level}</em></div>
+      <div class="intel-impact-metrics">
+        <div><b>${contractsInConeCount}</b><span>Contracts in cone</span></div>
+        <div><b>${subsInConeCount}</b><span>Subs in cone</span></div>
+        <div><b>${lastAlertsCount}</b><span>NOAA alert polygons</span></div>
+        <div><b>${forecastProximityContracts + forecastProximitySubs}</b><span>Resources near selected point</span></div>
+      </div>
+    </section>
+    <section class="intel-section">
+      <div class="intel-section-title">Operational States</div>
+      <div class="intel-state-list">${threatenedStates.length ? threatenedStates.map(state => `<span>${escapeHtml(state)}</span>`).join("") : `<small>No contract or subcontractor states currently intersect the cone.</small>`}</div>
+    </section>
+    <section class="intel-section intel-lists">
+      ${contractNames ? `<details><summary>Impacted Contracts (${contractsInConeCount})</summary><ul>${contractNames}</ul></details>` : ""}
+      ${subNames ? `<details><summary>Available Subcontractors (${subsInConeCount})</summary><ul>${subNames}</ul></details>` : ""}
+      ${!contractNames && !subNames ? `<p>No mapped contracts or subcontractors currently fall inside the published cone.</p>` : ""}
+      <small>Lists show the first 25 results in each category.</small>
+    </section>
+    <div class="timing-note"><b>Planning note:</b> Forecast points and the cone are planning guidance, not guaranteed impact locations or landfall times. Conditions can change with every advisory.</div>`;
   setStormPanelOpen(true);
 }
 

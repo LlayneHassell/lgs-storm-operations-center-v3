@@ -1,8 +1,14 @@
-# LGS Emergency Operations Center — Alignment Fix
+# LGS Emergency Operations Center — Storm Intelligence Update
 
-This update aligns the Map Intelligence heading and Map Color Key body by removing the inherited legend offset and applying consistent box sizing.
+This release builds on the working Executive Dashboard and adds a live Storm Intelligence briefing panel.
 
-Upload all files in this folder to the Version 3 GitHub repository and replace the existing files.
+## Added
+- Storm classification, advisory, maximum wind, pressure and movement when published by NHC
+- Latest forecast time and forecast timeline
+- Operational impact score and level
+- Contracts, subcontractors and NOAA alerts in the operating picture
+- States represented by contracts/subcontractors inside the cone
+- Expandable impacted-contract and subcontractor lists
+- Cache-busting stylesheet and script version 3.0
 
-## Sprint 2: Executive Dashboard
-This release adds clickable live metric cards for active storms, contracts at risk, subcontractors in the cone, NOAA alerts, feed status, and supporting NHC data counts.
+Upload the contents of this folder to the existing `lgs-storm-operations-center-v3` repository and replace the current files.
