@@ -255,3 +255,63 @@ body { font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFon
 @media print {
   .live-badge,.quick-actions-label,.rail-label { display:none!important; }
 }
+
+/* Sprint 1.1 — responsive grid rail fix
+   The operating picture and map intelligence panels share a dedicated rail,
+   preventing the toolbar from covering the Live Operations Summary. */
+@media (min-width:761px) {
+  .quick-actions {
+    right:18px;
+    max-width:calc(100vw - 36px);
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scrollbar-width:thin;
+  }
+  .quick-actions .quick-btn,
+  .quick-actions-label { flex:0 0 auto; }
+
+  .eoc-left-rail {
+    position:fixed;
+    z-index:9998;
+    top:146px;
+    bottom:122px;
+    left:18px;
+    width:342px;
+    display:grid;
+    grid-template-rows:minmax(180px,1fr) minmax(150px,.72fr);
+    gap:10px;
+    pointer-events:none;
+    min-height:0;
+  }
+  .status-shell,
+  .legend-shell {
+    position:relative;
+    inset:auto;
+    width:100%;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    pointer-events:auto;
+  }
+  .rail-label { flex:0 0 auto; }
+  .status,
+  .legend {
+    flex:1 1 auto;
+    min-height:0;
+    max-height:none;
+    overflow:auto;
+  }
+  .status.collapsed,
+  .legend.collapsed {
+    flex:0 0 auto;
+  }
+}
+
+@media (max-width:1000px) and (min-width:761px) {
+  .eoc-left-rail { width:310px; }
+}
+
+@media (max-width:760px) {
+  .eoc-left-rail { display:none!important; }
+}
