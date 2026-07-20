@@ -516,3 +516,43 @@ body { font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFon
 .status-grid > strong {
   color:#f4f9fd!important;
 }
+
+/* Sprint 1.4 — align Map Intelligence header and Map Color Key body */
+.eoc-left-rail,
+.status-shell,
+.legend-shell,
+.rail-label,
+.status,
+.legend,
+.legend-header,
+.legend-body {
+  box-sizing:border-box!important;
+}
+
+.legend-shell,
+.status-shell {
+  left:auto!important;
+  right:auto!important;
+}
+
+.legend {
+  left:0!important;
+  right:auto!important;
+  top:auto!important;
+  bottom:auto!important;
+  width:100%!important;
+  max-width:100%!important;
+  margin:0!important;
+  transform:none!important;
+}
+
+.rail-label {
+  width:100%!important;
+  margin:0!important;
+}
+
+.legend-header,
+.legend-body {
+  width:100%!important;
+  margin:0!important;
+}
