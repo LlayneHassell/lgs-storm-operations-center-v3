@@ -1,11 +1,11 @@
 
-&lt;!-- LGS Storm Operations Center v3: modular GitHub Pages build --&gt;
+<!-- LGS Emergency Operations Center: Sprint 1 interface -->
 <!DOCTYPE html>
 
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>Storm Ops Map</title>
+<title>LGS Emergency Operations Center</title>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <!-- Leaflet (free map library) -->
 <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
@@ -23,20 +23,22 @@
 <div class="brand-mark">LGS</div>
 <div class="brand-copy">
 <div class="brand-title">Looks Great Services</div>
-<div class="brand-subtitle">Storm Operations Dashboard</div>
+<div class="brand-subtitle">Emergency Operations Center</div>
 </div>
+<div class="live-badge"><span></span> LIVE DATA</div>
 <div class="search-wrap">
 <input id="mapSearch" placeholder="Search contract, subcontractor, state, address…" type="search"/>
 <button class="header-btn" onclick="runMapSearch()">Search</button>
 </div>
 </div>
-<div class="quick-actions">
-<button class="quick-btn" onclick="zoomToStorm()">🌀 Zoom to Storm</button>
-<button class="quick-btn" onclick="showConeContracts()">📍 Contracts in Cone</button>
-<button class="quick-btn" onclick="showConeSubs()">🚚 Subs in Cone</button>
-<button class="quick-btn" onclick="resetMapView()">↺ Reset View</button>
-<button class="quick-btn" onclick="openStormPanel()">Storm Details</button>
-<button class="quick-btn" onclick="generateStormBrief()">📄 Generate Brief</button>
+<div class="quick-actions" aria-label="Operations tools">
+<div class="quick-actions-label">OPERATIONS</div>
+<button class="quick-btn quick-primary" onclick="zoomToStorm()"><span>🌀</span> Storm Focus</button>
+<button class="quick-btn" onclick="showConeContracts()"><span>📍</span> Impacted Contracts</button>
+<button class="quick-btn" onclick="showConeSubs()"><span>🚚</span> Available Subs</button>
+<button class="quick-btn" onclick="resetMapView()"><span>↺</span> Reset Map</button>
+<button class="quick-btn" onclick="openStormPanel()"><span>◫</span> Situation Report</button>
+<button class="quick-btn quick-accent" onclick="generateStormBrief()"><span>📄</span> Generate Brief</button>
 </div>
 <button aria-expanded="false" class="mobile-panels-button" id="mobilePanelsButton" onclick="toggleMobilePanels()">☰ Panels</button>
 <div aria-hidden="true" class="mobile-panels-drawer" id="mobilePanelsDrawer">
@@ -63,8 +65,8 @@
 <div class="mobile-panel-content" id="mobileLayersContent"></div>
 </div>
 </div>
-<div class="status" id="statusBox">Loading…</div>
-<div class="legend" id="legendBox">
+<div class="status-shell"><div class="rail-label">CURRENT OPERATING PICTURE</div><div class="status" id="statusBox">Loading…</div></div>
+<div class="legend-shell"><div class="rail-label">MAP INTELLIGENCE</div><div class="legend" id="legendBox">
 <div class="legend-header"><b>Map Color Key</b><button class="legend-toggle" onclick="toggleLegend()">Hide</button></div>
 <div class="legend-body">
 <div class="legend-section">
@@ -95,7 +97,7 @@
 <div class="legend-row"><span class="swatch swatch-area" style="background:#9b59b6"></span>Other alert</div>
 </div>
 </div>
-</div>
+</div></div>
 <div class="forecast-dock" id="forecastDock">
 <div class="forecast-dock-top">
 <span class="forecast-dock-title">Forecast Timeline</span>
