@@ -1,0 +1,115 @@
+
+&lt;!-- LGS Storm Operations Center v3: modular GitHub Pages build --&gt;
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Storm Ops Map</title>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<!-- Leaflet (free map library) -->
+<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- PapaParse (reads CSV/TSV easily) -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<!-- Turf (checks if pin is inside polygon) -->
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<meta content="LGS Storm Operations Center v3" name="application-name"/><link href="css/dashboard.css" rel="stylesheet"/></head>
+<body>
+<div id="map"></div>
+<div class="app-header">
+<div class="brand-mark">LGS</div>
+<div class="brand-copy">
+<div class="brand-title">Looks Great Services</div>
+<div class="brand-subtitle">Storm Operations Dashboard</div>
+</div>
+<div class="search-wrap">
+<input id="mapSearch" placeholder="Search contract, subcontractor, state, address…" type="search"/>
+<button class="header-btn" onclick="runMapSearch()">Search</button>
+</div>
+</div>
+<div class="quick-actions">
+<button class="quick-btn" onclick="zoomToStorm()">🌀 Zoom to Storm</button>
+<button class="quick-btn" onclick="showConeContracts()">📍 Contracts in Cone</button>
+<button class="quick-btn" onclick="showConeSubs()">🚚 Subs in Cone</button>
+<button class="quick-btn" onclick="resetMapView()">↺ Reset View</button>
+<button class="quick-btn" onclick="openStormPanel()">Storm Details</button>
+<button class="quick-btn" onclick="generateStormBrief()">📄 Generate Brief</button>
+</div>
+<button aria-expanded="false" class="mobile-panels-button" id="mobilePanelsButton" onclick="toggleMobilePanels()">☰ Panels</button>
+<div aria-hidden="true" class="mobile-panels-drawer" id="mobilePanelsDrawer">
+<div class="mobile-panels-header"><b>Dashboard Panels</b><button class="mobile-panels-close" onclick="toggleMobilePanels(false)">Close</button></div>
+<div class="mobile-panel-section" id="mobileSummarySection">
+<button onclick="toggleMobilePanelSection('mobileSummarySection')">📊 Live Operations Summary <span class="panel-chevron">⌄</span></button>
+<div class="mobile-panel-content" id="mobileSummaryContent">Loading…</div>
+</div>
+<div class="mobile-panel-section" id="mobileLegendSection">
+<button onclick="toggleMobilePanelSection('mobileLegendSection')">🗝️ Map Color Key <span class="panel-chevron">⌄</span></button>
+<div class="mobile-panel-content" id="mobileLegendContent"></div>
+</div>
+<div class="mobile-panel-section" id="mobileStormSection">
+<button onclick="toggleMobilePanelSection('mobileStormSection')">🌀 Storm &amp; Results <span class="panel-chevron">⌄</span></button>
+<div class="mobile-panel-content mobile-panel-actions">
+<button onclick="openFromMobilePanels(openStormPanel)">Storm Details</button>
+<button onclick="openFromMobilePanels(showConeContracts)">Contracts in Cone</button>
+<button onclick="openFromMobilePanels(showConeSubs)">Subcontractors in Cone</button>
+<button onclick="openFromMobilePanels(generateStormBrief)">Generate Storm Brief</button>
+</div>
+</div>
+<div class="mobile-panel-section" id="mobileLayersSection">
+<button onclick="toggleMobilePanelSection('mobileLayersSection')">🗂️ Map Layers <span class="panel-chevron">⌄</span></button>
+<div class="mobile-panel-content" id="mobileLayersContent"></div>
+</div>
+</div>
+<div class="status" id="statusBox">Loading…</div>
+<div class="legend" id="legendBox">
+<div class="legend-header"><b>Map Color Key</b><button class="legend-toggle" onclick="toggleLegend()">Hide</button></div>
+<div class="legend-body">
+<div class="legend-section">
+<div class="legend-section-title">Contracts</div>
+<div class="legend-row"><span class="swatch" style="background:#2e8b57"></span>Active contract</div>
+<div class="legend-row"><span class="swatch" style="background:#f0ad4e"></span>Expires within 90 days</div>
+<div class="legend-row"><span class="swatch" style="background:#d9534f"></span>Expired contract</div>
+<div class="legend-row"><span class="swatch swatch-outline"></span>Purple outline = inside NHC cone</div>
+<div class="legend-row"><span class="swatch" style="background:#fff;border:3px solid #000"></span>Black outline = active NOAA alert</div>
+</div>
+<div class="legend-section">
+<div class="legend-section-title">Subcontractors</div>
+<div class="legend-row"><span class="swatch" style="background:#0275d8"></span>Subcontractor</div>
+<div class="legend-row"><span class="swatch swatch-outline"></span>Inside NHC cone</div>
+</div>
+<div class="legend-section">
+<div class="legend-section-title">Tropical Forecast</div>
+<div class="legend-row"><span class="swatch swatch-area" style="background:#c77dff;border:2px solid #7b2cbf"></span>NHC forecast cone</div>
+<div class="legend-row"><span class="swatch swatch-line" style="border-color:#6a040f"></span>Forecast track</div>
+<div class="legend-row"><span class="swatch" style="background:#fff;border:2px solid #6a040f"></span>Forecast point</div>
+</div>
+<div class="legend-section">
+<div class="legend-section-title">NOAA Alerts</div>
+<div class="legend-row"><span class="swatch swatch-area" style="background:#ff2d2d"></span>Tornado warning</div>
+<div class="legend-row"><span class="swatch swatch-area" style="background:#ff8c00"></span>Hurricane warning</div>
+<div class="legend-row"><span class="swatch swatch-area" style="background:#ffd43b"></span>Flash flood warning</div>
+<div class="legend-row"><span class="swatch swatch-area" style="background:#3388ff"></span>Tropical storm warning</div>
+<div class="legend-row"><span class="swatch swatch-area" style="background:#9b59b6"></span>Other alert</div>
+</div>
+</div>
+</div>
+<div class="forecast-dock" id="forecastDock">
+<div class="forecast-dock-top">
+<span class="forecast-dock-title">Forecast Timeline</span>
+<button class="forecast-play" id="forecastPlayButton" onclick="toggleForecastPlayback()">▶ Play</button>
+<span class="forecast-time-label" id="forecastTimeLabel">Now</span>
+</div>
+<input id="forecastSlider" max="0" min="0" oninput="applyForecastStep(Number(this.value))" step="1" type="range" value="0"/>
+<div class="forecast-ticks" id="forecastTicks"><span>Now</span></div>
+<div class="forecast-dock-note">The track and selected forecast point advance by advisory time. The official NHC cone remains the full published uncertainty envelope.</div>
+</div>
+<div class="side-panel" id="stormPanel">
+<div class="side-panel-header"><b>Storm &amp; Operations Details</b><button class="panel-close" onclick="closeStormPanel()">Close</button></div>
+<div class="side-panel-body" id="stormPanelBody"></div>
+</div>
+
+<script defer="defer" src="js/app.js"></script></body>
+</html>
