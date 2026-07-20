@@ -31,3 +31,6 @@ Do not upload the outer ZIP as the website. GitHub Pages needs the extracted fil
 ## Safe editing rule
 
 Keep `index.html` focused on page structure, `css/dashboard.css` on appearance, and `js/app.js` on data loading and behavior. Before larger future refactors, make one change at a time and test both desktop and mobile.
+
+## Sprint 1.3 contrast correction
+This release fixes nested white cards, dark-on-dark storm names, pale purple impact badges, and the white Map Intelligence header/body. The stylesheet and script references include a version query so browsers fetch the corrected files rather than cached copies.
